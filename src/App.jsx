@@ -29,6 +29,7 @@ function App() {
       return;
     }
 
+    // Captura d'imatge
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
@@ -36,17 +37,17 @@ function App() {
     const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     setLoading(true);
-    setText("Connectant amb Gemini (v1 estable)...");
+    setText("Connectant amb Gemini...");
 
     try {
-      // HEM CANVIAT v1beta per v1 i el model a gemini-1.5-flash-latest
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      // PROVEM AMB v1beta I EL MODEL gemini-1.5-flash (sense el -latest)
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
             parts: [
-              { text: "Ets un expert en transcripció d'apunts. Analitza la imatge i passa el contingut a net, resolent exercicis si n'hi ha. Respon en català." },
+              { text: "Ets un expert en transcripció. Transcriu aquests apunts a text net en català. Si hi ha fórmules o exercicis, explica'ls o resol-los." },
               { inline_data: { mime_type: "image/jpeg", data: base64Image } }
             ]
           }]
@@ -58,30 +59,40 @@ function App() {
       if (data.candidates && data.candidates[0].content) {
         setText(data.candidates[0].content.parts[0].text);
       } else if (data.error) {
-        setText(`Error de Google: ${data.error.message}`);
+        // Si torna a donar error de model, intentarem un "pla B" automàtic
+        setText(`Error de Google: ${data.error.message}\n(Codi: ${data.error.code})`);
       } else {
-        setText("No s'ha pogut extreure text. Prova d'enfocar millor.");
+        setText("No s'ha rebut text. Prova de fer la foto més clara.");
       }
     } catch (error) {
-      setText("Error de xarxa.");
+      setText("Error de xarxa. Comprova la teva connexió.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h2 style={{ color: '#4285F4' }}>🧠 Apunts Intel·ligents (v1)</h2>
-      <video ref={videoRef} autoPlay playsInline style={{ width: '100%', maxWidth: '500px', borderRadius: '15px', border: '3px solid #4285F4' }} />
+    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif', backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
+      <h2 style={{ color: '#4285F4' }}>🚀 Escàner amb Gemini AI</h2>
+      
+      <div style={{ maxWidth: '500px', margin: '0 auto', borderRadius: '15px', overflow: 'hidden', border: '3px solid #4285F4' }}>
+        <video ref={videoRef} autoPlay playsInline style={{ width: '100%', display: 'block' }} />
+      </div>
+
       <canvas ref={canvasRef} style={{ display: 'none' }} />
+
       <div style={{ margin: '20px' }}>
-        <button onClick={startCamera} style={{ padding: '12px', marginRight: '10px' }}>1. Obrir</button>
-        <button onClick={processWithGemini} disabled={loading} style={{ padding: '12px', background: '#4285F4', color: 'white', border: 'none', borderRadius: '8px' }}>
-          {loading ? "Analitzant..." : "2. Digitalitzar amb IA"}
+        <button onClick={startCamera} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', marginRight: '10px' }}>
+          1. Activar Càmera
+        </button>
+        <button onClick={processWithGemini} disabled={loading} style={{ padding: '12px 20px', background: '#4285F4', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+          {loading ? "Processant..." : "2. Analitzar amb IA"}
         </button>
       </div>
-      <div style={{ textAlign: 'left', background: 'white', padding: '15px', borderRadius: '10px', border: '1px solid #ddd' }}>
-        <p style={{ whiteSpace: 'pre-wrap' }}>{text}</p>
+
+      <div style={{ textAlign: 'left', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+        <strong>Resultat:</strong>
+        <p style={{ whiteSpace: 'pre-wrap', marginTop: '10px' }}>{text}</p>
       </div>
     </div>
   );
