@@ -6,7 +6,7 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // ⚠️ Torna a enganxar aquí la teva clau amb molta cura (sense espais extres)
+  // ⚠️ Torna a posar la teva API KEY aquí
   const GEMINI_API_KEY = "AIzaSyAaXi8T8JMBf2epxzDBl3yj3HvolbrzA4k";
 
   const startCamera = async () => {
@@ -16,7 +16,7 @@ function App() {
       });
       videoRef.current.srcObject = stream;
     } catch (err) {
-      alert("Error: Revisa els permisos de la càmera al navegador.");
+      alert("Error de càmera: Revisa els permisos.");
     }
   };
 
@@ -29,82 +29,62 @@ function App() {
       return;
     }
 
-    // Capturem la imatge
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').drawImage(video, 0, 0);
     
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    const base64Image = imageData.split(',')[1];
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     setLoading(true);
-    setText("Connectant amb el cervell de Google...");
+    setText("Connectant amb Gemini (v1 estable)...");
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      // HEM CANVIAT v1beta per v1 i el model a gemini-1.5-flash-latest
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
             parts: [
-              { text: "Descriu detalladament tot el text que veus en aquesta imatge d'apunts. Si hi ha exercicis, resol-los. Respon sempre en català." },
+              { text: "Ets un expert en transcripció d'apunts. Analitza la imatge i passa el contingut a net, resolent exercicis si n'hi ha. Respon en català." },
               { inline_data: { mime_type: "image/jpeg", data: base64Image } }
             ]
-          }],
-          // Afegim configuració per evitar que la IA es bloquegi per seguretat
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-          ]
+          }]
         })
       });
 
       const data = await response.json();
       
-      // Si la resposta és buida, mirem si hi ha un error estructural
       if (data.candidates && data.candidates[0].content) {
         setText(data.candidates[0].content.parts[0].text);
       } else if (data.error) {
         setText(`Error de Google: ${data.error.message}`);
       } else {
-        setText("Google ha rebut la foto però no ha tornat text. Prova de moure una mica el paper o millorar la llum.");
+        setText("No s'ha pogut extreure text. Prova d'enfocar millor.");
       }
     } catch (error) {
-      setText("Error crític de xarxa. Estàs connectat a internet?");
+      setText("Error de xarxa.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif', backgroundColor: '#fdfdfd', minHeight: '100vh' }}>
-      <h2 style={{ color: '#4285F4' }}>🧠 Apunts Intel·ligents</h2>
-      
-      <div style={{ maxWidth: '500px', margin: '0 auto', borderRadius: '15px', overflow: 'hidden', border: '3px solid #4285F4' }}>
-        <video ref={videoRef} autoPlay playsInline style={{ width: '100%', display: 'block' }} />
-      </div>
-
+    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <h2 style={{ color: '#4285F4' }}>🧠 Apunts Intel·ligents (v1)</h2>
+      <video ref={videoRef} autoPlay playsInline style={{ width: '100%', maxWidth: '500px', borderRadius: '15px', border: '3px solid #4285F4' }} />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-
       <div style={{ margin: '20px' }}>
-        <button onClick={startCamera} style={btnS}>1. Activar</button>
-        <button onClick={processWithGemini} disabled={loading} style={btnP}>
-          {loading ? "Analitzant..." : "2. Envia a Gemini"}
+        <button onClick={startCamera} style={{ padding: '12px', marginRight: '10px' }}>1. Obrir</button>
+        <button onClick={processWithGemini} disabled={loading} style={{ padding: '12px', background: '#4285F4', color: 'white', border: 'none', borderRadius: '8px' }}>
+          {loading ? "Analitzant..." : "2. Digitalitzar amb IA"}
         </button>
       </div>
-
-      <div style={{ textAlign: 'left', backgroundColor: 'white', padding: '15px', borderRadius: '10px', border: '1px solid #eee', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-        <small style={{ color: '#999' }}>RESULTAT:</small>
-        <div style={{ whiteSpace: 'pre-wrap', marginTop: '10px', fontSize: '15px' }}>{text}</div>
+      <div style={{ textAlign: 'left', background: 'white', padding: '15px', borderRadius: '10px', border: '1px solid #ddd' }}>
+        <p style={{ whiteSpace: 'pre-wrap' }}>{text}</p>
       </div>
     </div>
   );
 }
-
-const btnS = { padding: '12px 15px', marginRight: '10px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #ccc' };
-const btnP = { padding: '12px 20px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
 
 export default App;
