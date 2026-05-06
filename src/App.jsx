@@ -7,7 +7,7 @@ function App() {
   const canvasRef = useRef(null);
 
   // ⚠️ Torna a enganxar aquí la teva clau amb molta cura (sense espais extres)
-  const GEMINI_API_KEY = "LAIzaSyBIDp_ei_K1dWZLblQQi7S7VkpzEe6a1ec";
+  const GEMINI_API_KEY = "AIzaSyAaXi8T8JMBf2epxzDBl3yj3HvolbrzA4k";
 
   const startCamera = async () => {
     try {
