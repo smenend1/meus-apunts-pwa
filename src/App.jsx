@@ -6,6 +6,7 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  // ⚠️ Torna a enganxar la clau aquí (assegura't que no hi hagi espais al final)
   const GEMINI_API_KEY = "AIzaSyAaXi8T8JMBf2epxzDBl3yj3HvolbrzA4k";
 
   const startCamera = async () => {
@@ -15,7 +16,7 @@ function App() {
       });
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch (err) {
-      alert("Error: Revisa els permisos de la càmera.");
+      alert("Error de càmera: Revisa els permisos.");
     }
   };
 
@@ -30,74 +31,55 @@ function App() {
     const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
     setLoading(true);
-    setText("Provant de connectar amb el cervell de la IA...");
+    setText("Analitzant...");
 
-    // Llista de models per provar en ordre de modernitat
-    const modelsToTry = [
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-flash",
-      "gemini-pro-vision"
-    ];
+    try {
+      // HEM CANVIAT A v1 i gemini-1.5-flash (la combinació més estable)
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: "Ets un expert en transcripció d'apunts. Analitza la imatge i passa el contingut a net en català." },
+              { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+            ]
+          }]
+        })
+      });
 
-    let success = false;
-    let lastError = "";
+      const data = await response.json();
 
-    for (const model of modelsToTry) {
-      if (success) break;
-      
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: "Ets un expert en apunts. Transcriu el text d'aquesta imatge en català, neteja errors i resol exercicis si n'hi ha." },
-                { inline_data: { mime_type: "image/jpeg", data: base64Image } }
-              ]
-            }]
-          })
-        });
-
-        const data = await response.json();
-
-        if (data.candidates && data.candidates[0].content) {
-          setText(data.candidates[0].content.parts[0].text);
-          success = true;
-        } else if (data.error) {
-          lastError = data.error.message;
-          console.log(`Model ${model} ha fallat:`, lastError);
-        }
-      } catch (err) {
-        lastError = "Error de xarxa";
+      if (data.candidates && data.candidates[0].content) {
+        setText(data.candidates[0].content.parts[0].text);
+      } else if (data.error) {
+        setText(`Google diu: ${data.error.message}`);
+      } else {
+        setText("No s'ha rebut text. Prova de nou.");
       }
+    } catch (err) {
+      setText("Error de xarxa.");
+    } finally {
+      setLoading(false);
     }
-
-    if (!success) {
-      setText(`❌ No hem pogut connectar. Google diu: ${lastError}\n\nConsell: Revisa que la teva API KEY sigui correcta.`);
-    }
-    setLoading(false);
   };
 
   return (
     <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h2 style={{ color: '#1a73e8' }}>🚀 Escàner Intel·ligent</h2>
-      <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxWidth: '500px', borderRadius: '15px', border: '3px solid #1a73e8' }} />
+      <h2 style={{ color: '#4285F4' }}>📸 Escàner Apunts</h2>
+      <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxWidth: '500px', borderRadius: '15px', border: '2px solid #4285F4' }} />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
       <div style={{ margin: '20px' }}>
-        <button onClick={startCamera} style={btnS}>1. Activar Càmera</button>
-        <button onClick={processWithGemini} disabled={loading} style={btnP}>
-          {loading ? "Provant models..." : "2. Digitalitzar"}
+        <button onClick={startCamera} style={{ padding: '10px' }}>Obrir</button>
+        <button onClick={processWithGemini} disabled={loading} style={{ padding: '10px', background: '#4285F4', color: 'white', border: 'none', marginLeft: '10px' }}>
+          {loading ? "Analitzant..." : "Digitalitzar"}
         </button>
       </div>
-      <div style={{ textAlign: 'left', background: 'white', padding: '15px', borderRadius: '10px', border: '1px solid #ddd' }}>
+      <div style={{ textAlign: 'left', background: 'white', padding: '15px', border: '1px solid #ddd' }}>
         <p style={{ whiteSpace: 'pre-wrap' }}>{text}</p>
       </div>
     </div>
   );
 }
-
-const btnS = { padding: '12px', marginRight: '10px', borderRadius: '8px', cursor: 'pointer' };
-const btnP = { padding: '12px', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' };
 
 export default App;
